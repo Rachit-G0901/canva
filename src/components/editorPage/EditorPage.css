@@ -1,0 +1,23 @@
+.control-panel {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 100;
+    display: flex;
+    gap: 10px;
+    padding: 8px;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.editor-page-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh; /* or any desired height */
+}
+
+.editor-page-canvas {
+    flex-grow: 1;
+    /* Add any specific styling for the canvas area here */
+}

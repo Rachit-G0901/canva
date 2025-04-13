@@ -1,11 +1,13 @@
 import { useDispatch, useSelector } from "react-redux";
 import { Stage, Layer, Text, Circle, Rect, Transformer, Line } from 'react-konva';
-import { addConnection, deleteConnection, deleteElement, redo, undo, updateElement } from "../../store/slice.js";
+import { addConnection, deleteConnection, deleteElement, updateElement } from "../../store/slice.js";
 import React, { useEffect, useRef, useState } from "react";
 import URLImage from "../urlImage/URLImage.js";
 import { getCenter } from "../helper/shape.helper.js";
+import ControlPanel from './ControlPanel.js';
+import './EditorPage.css';
 
-function EditorPage() {
+function EditorPage() {  
     const elements = useSelector(state => state.elements.present.elements);
     const connections = useSelector(state => state.elements.present.connections || []);
 
@@ -17,6 +19,7 @@ function EditorPage() {
     const [selectedConnectionId, setSelectedConnectionId] = useState(null);
     const transformerRef = useRef();
     const shapeRefs = useRef({});
+    const imageRefs = useRef({});
 
     const [stageScale, setStageScale] = useState(1);
     const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 });
@@ -65,6 +68,14 @@ function EditorPage() {
         } else if (el.type === 'circle') {
             updates.radius = node.radius() * node.scaleX();
         }
+        else if (el.type === 'image') {
+            updates.width = node.width() / node.scaleX();
+            updates.height = node.height() / node.scaleY();
+             updates.scaleX=node.scaleX();
+            updates.scaleY=node.scaleY();
+
+        }
+
 
         node.scaleX(1);
         node.scaleY(1);
@@ -112,106 +123,15 @@ function EditorPage() {
     };
 
     return (
-        <div style={{ position: 'relative' }}>
-            {/* Control Panel */}
-            <div style={{
-                position: 'absolute',
-                top: 10,
-                left: 10,
-                zIndex: 100,
-                display: 'flex',
-                gap: '10px',
-                padding: '8px',
-                background: '#fff',
-                borderRadius: '6px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-            }}>
-                <button onClick={() => dispatch(undo())}>Undo</button>
-                <button onClick={() => dispatch(redo())}>Redo</button>
-                {(selectedId || selectedConnectionId) && (
-                    <button onClick={handleDelete}>Delete</button>
-                )}
-                {selectedId && (
-                    <>
-                        <input
-                            type="number"
-                            min={8}
-                            max={100}
-                            value={elements.find(el => el.id === selectedId)?.fontSize || 20}
-                            onChange={(e) =>
-                                dispatch(updateElement({
-                                    id: selectedId,
-                                    updates: { fontSize: parseInt(e.target.value) }
-                                }))
-                            }
-                            style={{ width: 60 }}
-                        />
-                        <button
-                            onClick={() => {
-                                const el = elements.find(el => el.id === selectedId);
-                                dispatch(updateElement({
-                                    id: selectedId,
-                                    updates: { fontStyle: el.fontStyle === 'bold' ? 'normal' : 'bold' }
-                                }));
-                            }}
-                        >
-                            Bold
-                        </button>
-                        <button
-                            onClick={() => {
-                                const el = elements.find(el => el.id === selectedId);
-                                dispatch(updateElement({
-                                    id: selectedId,
-                                    updates: { fontStyle: el.fontStyle === 'italic' ? 'normal' : 'italic' }
-                                }));
-                            }}
-                        >
-                            Italic
-                        </button>
-                        <button
-                            onClick={() => {
-                                const el = elements.find(el => el.id === selectedId);
-                                dispatch(updateElement({
-                                    id: selectedId,
-                                    updates: {
-                                        textDecoration: el.textDecoration === 'underline' ? '' : 'underline'
-                                    }
-                                }));
-                            }}
-                        >
-                            Underline
-                        </button>
-                        <input
-                            type="color"
-                            onChange={(e) => {
-                                dispatch(updateElement({
-                                    id: selectedId,
-                                    updates: { fill: e.target.value }
-                                }));
-                            }}
-                        />
-                        <button
-                            onClick={() => {
-                                if (selectedId) {
-                                    const other = elements.find(el => el.id !== selectedId);
-                                    if (other) {
-                                        dispatch(addConnection({
-                                            id: Date.now().toString(),
-                                            from: selectedId,
-                                            to: other.id
-                                        }));
-                                    }
-                                }
-                            }}
-                        >
-                            Connect
-                        </button>
-                    </>
-                )}
-            </div>
+        <div className="editor-page-container">
+            <ControlPanel
+                selectedId={selectedId}
+                selectedConnectionId={selectedConnectionId}
+                handleDelete={handleDelete}
+            />
 
             {/* Stage and Layers */}
-            <Stage
+            <Stage className="editor-page-canvas"
                 width={window.innerWidth - 200}
                 height={600}
                 scaleX={stageScale}
@@ -321,19 +241,24 @@ function EditorPage() {
                         if (el.type === 'image') {
                             return (
                                 <URLImage
-                                    key={`img-${el.id}`}
-                                    imageProps={el}
-                                    dispatch={dispatch}
-                                    onClick={() => {
-                                        setSelectedId(el.id);
-                                        setSelectedConnectionId(null);
-                                    }}
-                                    stroke={selectedId === el.id ? 'blue' : undefined}
-                                    strokeWidth={selectedId === el.id ? 2 : 0}
+                                key={`img-${el.id}`}
+                                imageProps={el}
+                                dispatch={dispatch}
+                                onClick={() => {
+                                    setSelectedId(el.id);
+                                    setSelectedConnectionId(null);
+                                }}
+                                onDragEnd={(e) => {
+                                    dispatch(updateElement({
+                                        id: el.id,
+                                        updates: { x: e.target.x(), y: e.target.y() }
+                                    }));
+                                }}
+                                onTransformEnd={(e) => handleTransformEnd(el, e.target)}
                                     ref={(node) => { if (node) shapeRefs.current[el.id] = node; }}
                                 />
                             );
-                        }
+                        } 
 
                         return null;
                     })}
